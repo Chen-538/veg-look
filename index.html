@@ -20,6 +20,7 @@
       --backdrop-blur: blur(20px) saturate(180%);
     }
 
+ /* ====== 1. 修改 Body (把背景圖拿掉，只留基本設定) ====== */
     body {
       margin: 0;
       font-family: 'Poppins', 'Noto Sans TC', sans-serif;
@@ -30,12 +31,38 @@
       align-items: center;
       padding: 40px 20px;
       box-sizing: border-box;
+      position: relative;
+      /* 注意：這裡不要放 background 了！移到下面去 */
+    }
+
+    /* ====== 2. 新增：專屬的背景層 (手機電腦都完美顯示) ====== */
+    #fixed-background {
+      position: fixed; /* 強制固定在視窗 */
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -99; /* 放在最最最底層 */
+      
+      /* 這裡放原本的蔬菜圖 */
       background: 
         linear-gradient(to bottom right, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0.1)),
-        url('https://images.unsplash.com/photo-1498837167922-ddd27525d352?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80') no-repeat center center fixed;
-      background-size: cover;
-      position: relative;
-      overflow-x: hidden;
+        url('https://images.unsplash.com/photo-1498837167922-ddd27525d352?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80') no-repeat center center;
+      background-size: cover; /* 讓圖片填滿螢幕 */
+    }
+
+    /* ====== 3. 調整原本的動態光暈 (確保在背景圖之上，但內容之下) ====== */
+    body::before, body::after {
+      content: '';
+      position: fixed; /* 改成 fixed 讓光暈也跟著螢幕走 */
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      z-index: -50; /* 放在背景圖(-99)上面，但內容(0)下面 */
+      filter: blur(100px);
+      opacity: 0.4;
+      animation: floatOrb 10s infinite ease-in-out alternate;
+      pointer-events: none; /* 確保點擊穿透 */
     }
 
     /* 動態光暈 */
@@ -223,10 +250,11 @@
   </style>
 </head>
 <body>
+    <div id="fixed-background"></div>
 
   <div class="header-content">
     <h1>🥦 蔬食回推器</h1>
-    <div class="subtitle">智能解析，探索料理的美味秘密</div>
+    <div class="subtitle">AI 智能解析，探索料理的美味秘密</div>
   </div>
 
   <div class="container">
@@ -261,7 +289,7 @@
       <button class="btn btn-secondary" id="btnReset">重新/清除</button>
       <button class="btn btn-primary" id="btnAnalyze">開始智慧回推</button>
     </div>
-    <div id="loadingStatus" class="loading-text">✨ 正在全力分析中...</div>
+    <div id="loadingStatus" class="loading-text">✨ AI 正在全力分析中...</div>
 
     <div class="recipe-card" id="resultCard">
       <div class="recipe-header">
