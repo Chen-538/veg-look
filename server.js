@@ -129,7 +129,7 @@ app.post("/api/analyze-text-dual", async (req, res) => {
 
     // --- 第一階段：ChatGPT 初步分析 ---
     const gptResponse = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-5",
       messages: [
         {
           role: "system",
