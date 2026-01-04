@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>蔬食回推器 | Veggie Lens</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Poppins:wght@600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #10b981;
+      --primary-dark: #047857;
+      --secondary: #f97316;
+      --text: #1f2937;
+      --text-light: #4b5563;
+      --radius: 24px;
+      --glass-bg: rgba(255, 255, 255, 0.65);
+      --glass-border: rgba(255, 255, 255, 0.8);
+      --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+      --backdrop-blur: blur(20px) saturate(180%);
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Poppins', 'Noto Sans TC', sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      box-sizing: border-box;
+      background: 
+        linear-gradient(to bottom right, rgba(255, 255, 255, 0.2), rgba(0, 0, 0, 0.1)),
+        url('https://images.unsplash.com/photo-1498837167922-ddd27525d352?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80') no-repeat center center fixed;
+      background-size: cover;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* 動態光暈 */
+    body::before, body::after {
+      content: '';
+      position: absolute;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      z-index: -1;
+      filter: blur(100px);
+      opacity: 0.4;
+      animation: floatOrb 10s infinite ease-in-out alternate;
+    }
+    body::before { background: var(--primary); top: -100px; left: -100px; }
+    body::after { background: var(--secondary); bottom: -100px; right: -100px; animation-delay: -5s; }
+    @keyframes floatOrb { 0% { transform: translate(0, 0); } 100% { transform: translate(50px, 50px); } }
+
+    /* Header 膠囊 */
+    .header-content {
+      text-align: center;
+      margin-bottom: 30px;
+      position: relative;
+      z-index: 2;
+      display: inline-block;
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(16px);
+      padding: 16px 40px;
+      border-radius: 50px;
+      border: 1px solid rgba(255, 255, 255, 1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      animation: floatTitle 6s ease-in-out infinite;
+    }
+    @keyframes floatTitle { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+
+    h1 { 
+      margin: 0; font-size: 2.2rem; font-weight: 900;
+      background: linear-gradient(135deg, #065f46, #10b981);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .subtitle { margin-top: 4px; color: #4b5563; font-size: 0.95rem; font-weight: 600; }
+
+    /* Main Container */
+    .container {
+      width: 100%; max-width: 550px;
+      display: flex; flex-direction: column; gap: 24px;
+      position: relative; z-index: 2;
+      background: var(--glass-bg);
+      backdrop-filter: var(--backdrop-blur);
+      border-radius: 30px;
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-shadow);
+      padding: 30px;
+    }
+
+    /* Tab Switcher */
+    .tab-container {
+      display: flex;
+      background: rgba(255, 255, 255, 0.5);
+      border-radius: 20px;
+      padding: 4px;
+      margin-bottom: 10px;
+      border: 1px solid rgba(255,255,255,0.6);
+    }
+    .tab-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 12px;
+      border-radius: 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-light);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-family: 'Poppins', sans-serif;
+    }
+    .tab-btn.active {
+      background: white;
+      color: var(--primary);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    /* Content Area (Upload & Input) */
+    .content-area {
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: var(--radius);
+      padding: 15px;
+      border: 1px solid rgba(255,255,255,0.8);
+      min-height: 280px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    
+    .hidden { display: none !important; }
+
+    /* Drop Zone */
+    .drop-zone {
+      border: 2px dashed #a7f3d0;
+      border-radius: 20px;
+      height: 260px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(249, 250, 251, 0.5);
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    .drop-zone:hover { border-color: var(--primary); background: rgba(236, 253, 245, 0.8); }
+    .preview-img { position: absolute; width: 100%; height: 100%; object-fit: cover; border-radius: 18px; display: none; z-index: 5; }
+
+    /* Text Input Area */
+    .text-input-wrapper {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      height: 100%;
+      justify-content: center;
+    }
+    .glass-input {
+      width: 100%;
+      padding: 16px;
+      font-size: 1.1rem;
+      border: 2px solid rgba(255,255,255,0.8);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.7);
+      outline: none;
+      color: var(--text);
+      font-weight: 500;
+      transition: all 0.3s;
+      box-sizing: border-box;
+    }
+    .glass-input:focus {
+      border-color: var(--primary);
+      background: white;
+      box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+    }
+    .glass-input::placeholder { color: #9ca3af; }
+
+    /* Controls & Result (Keep same) */
+    .controls { display: flex; gap: 12px; justify-content: center; margin-top: 10px; }
+    .btn {
+      flex: 1; padding: 14px; border: none; border-radius: 18px;
+      font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
+      font-family: 'Poppins', sans-serif;
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; box-shadow: 0 8px 20px -6px rgba(16, 185, 129, 0.5); }
+    .btn-secondary { background: rgba(255, 255, 255, 0.8); color: var(--text); border: 1px solid rgba(229, 231, 235, 0.8); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Result Card */
+    .recipe-card {
+      background: rgba(255, 255, 255, 0.6);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      border: 1px solid rgba(255,255,255,0.8);
+      overflow: hidden;
+      display: none; 
+      animation: slideUp 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    @keyframes slideUp { from {opacity:0; transform:translateY(40px)} to {opacity:1; transform:translateY(0)} }
+
+    .recipe-header { padding: 24px; background: linear-gradient(to bottom, rgba(240, 253, 244, 0.8), rgba(255,255,255,0.5)); border-bottom: 1px solid rgba(243, 244, 246, 0.8); }
+    .dish-name { font-size: 1.6rem; font-weight: 800; color: var(--primary-dark); margin-bottom: 12px; }
+    .dish-meta { display: flex; gap: 10px; flex-wrap: wrap; }
+    .tag { background: white; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; display: flex; gap: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
+    .tag.cal { color: var(--secondary); background: rgba(255, 247, 237, 0.8); }
+
+    .recipe-body { padding: 24px; }
+    .ingredients-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 24px; }
+    .ing-item { background: rgba(255, 255, 255, 0.7); padding: 12px; border-radius: 16px; display: flex; justify-content: space-between; font-weight: 500; border: 1px solid rgba(255,255,255,0.9); }
+    .steps-list { list-style: none; padding: 0; margin: 0; }
+    .step-item { display: flex; gap: 16px; margin-bottom: 20px; }
+    .step-num { width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; flex-shrink: 0; }
+    .step-desc { line-height: 1.6; font-weight: 500; }
+
+    .loading-text { text-align: center; font-weight: 600; margin-top: 15px; display: none; }
+    .scan-line { position: absolute; width: 100%; height: 4px; background: linear-gradient(to right, transparent, var(--secondary), transparent); top: 0; left: 0; z-index: 10; display: none; animation: scan 2s ease-in-out infinite; }
+    @keyframes scan { 0% {top:0} 100%{top:100%} }
+  </style>
+</head>
+<body>
+
+  <div class="header-content">
+    <h1>🥦 蔬食回推器</h1>
+    <div class="subtitle">AI 智能解析，探索料理的美味秘密</div>
+  </div>
+
+  <div class="container">
+    
+    <div class="tab-container">
+      <button class="tab-btn active" onclick="switchTab('image')">📸 拍照辨識</button>
+      <button class="tab-btn" onclick="switchTab('text')">⌨️ 輸入菜名</button>
+    </div>
+
+    <div class="content-area">
+      <div id="mode-image">
+        <div class="drop-zone" id="dropZone">
+          <input type="file" id="fileInput" accept="image/*" hidden />
+          <div class="scan-line" id="scanLine"></div>
+          <img id="preview" class="preview-img" />
+          <div id="placeholder" style="text-align:center">
+            <svg style="width:64px; height:64px; color:var(--primary); opacity:0.7; margin-bottom:12px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+            <div style="color:#6b7280; font-weight:600">點擊上傳或拖放照片</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="mode-text" class="text-input-wrapper hidden">
+        <div style="text-align: center; margin-bottom: 10px; color: var(--primary-dark); font-weight: 700;">
+          我想知道這道菜的資訊...
+        </div>
+        <input type="text" id="dishInput" class="glass-input" placeholder="例如：三杯杏鮑菇、麻婆豆腐..." />
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-secondary" id="btnReset">重新/清除</button>
+      <button class="btn btn-primary" id="btnAnalyze">開始智慧回推</button>
+    </div>
+    <div id="loadingStatus" class="loading-text">✨ AI 正在全力分析中...</div>
+
+    <div class="recipe-card" id="resultCard">
+      <div class="recipe-header">
+        <div class="dish-name" id="resName">--</div>
+        <div class="dish-meta">
+          <div class="tag cal">🔥 <span id="resCal">--</span> kcal</div>
+          <div class="tag">⚖️ <span id="resWeight">--</span> g</div>
+          <div class="tag">🌱 <span id="resType">全素</span></div>
+        </div>
+      </div>
+      <div class="recipe-body">
+        <div style="font-size:1.1rem; font-weight:700; margin-bottom:16px; border-left:4px solid var(--primary); padding-left:10px;">所需食材</div>
+        <div class="ingredients-grid" id="resIngredients"></div>
+        <div style="font-size:1.1rem; font-weight:700; margin-bottom:16px; border-left:4px solid var(--primary); padding-left:10px;">料理步驟</div>
+        <ol class="steps-list" id="resSteps"></ol>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // API Endpoints
+ const BASE_URL = "https://veg-look.onrender.com"; // <-- 換成你的
+const API_IMG_URL = `${BASE_URL}/api/analyze-dual`;
+const API_TXT_URL = `${BASE_URL}/api/analyze-text-dual`;
+
+  let currentMode = 'image'; // 'image' or 'text'
+  let currentFile = null;
+
+  const els = {
+    dropZone: document.getElementById('dropZone'),
+    fileInput: document.getElementById('fileInput'),
+    preview: document.getElementById('preview'),
+    placeholder: document.getElementById('placeholder'),
+    btnAnalyze: document.getElementById('btnAnalyze'),
+    btnReset: document.getElementById('btnReset'),
+    scanLine: document.getElementById('scanLine'),
+    loadingStatus: document.getElementById('loadingStatus'),
+    resultCard: document.getElementById('resultCard'),
+    dishInput: document.getElementById('dishInput'),
+    // Result fields
+    name: document.getElementById('resName'),
+    cal: document.getElementById('resCal'),
+    weight: document.getElementById('resWeight'),
+    type: document.getElementById('resType'),
+    ingredients: document.getElementById('resIngredients'),
+    steps: document.getElementById('resSteps'),
+  };
+
+  // === 頁籤切換邏輯 ===
+  window.switchTab = function(mode) {
+    currentMode = mode;
+    // UI 更新
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+
+    if (mode === 'image') {
+      document.getElementById('mode-image').classList.remove('hidden');
+      document.getElementById('mode-text').classList.add('hidden');
+      checkBtnState();
+    } else {
+      document.getElementById('mode-image').classList.add('hidden');
+      document.getElementById('mode-text').classList.remove('hidden');
+      els.dishInput.focus();
+      checkBtnState();
+    }
+    els.resultCard.style.display = 'none';
+  }
+
+  // === 圖片模式邏輯 ===
+  els.dropZone.addEventListener('click', () => els.fileInput.click());
+  els.fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+  // Drag & Drop
+  els.dropZone.addEventListener('dragover', (e) => { e.preventDefault(); els.dropZone.style.background = 'rgba(236, 253, 245, 0.8)'; });
+  els.dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); els.dropZone.style.background = ''; });
+  els.dropZone.addEventListener('drop', (e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); });
+
+  function handleFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    currentFile = file;
+    els.preview.src = URL.createObjectURL(file);
+    els.preview.style.display = 'block';
+    els.placeholder.style.display = 'none';
+    els.dropZone.style.border = 'none';
+    checkBtnState();
+  }
+
+  // === 文字模式邏輯 ===
+  els.dishInput.addEventListener('input', checkBtnState);
+  // 按 Enter 直接送出
+  els.dishInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !els.btnAnalyze.disabled) els.btnAnalyze.click();
+  });
+
+  // === 狀態檢查 ===
+  function checkBtnState() {
+    if (currentMode === 'image') {
+      els.btnAnalyze.disabled = !currentFile;
+    } else {
+      els.btnAnalyze.disabled = !els.dishInput.value.trim();
+    }
+  }
+
+  // === 重置 ===
+  els.btnReset.addEventListener('click', () => {
+    // Image reset
+    currentFile = null;
+    els.fileInput.value = '';
+    els.preview.src = '';
+    els.preview.style.display = 'none';
+    els.placeholder.style.display = 'block';
+    els.dropZone.style.border = '';
+    
+    // Text reset
+    els.dishInput.value = '';
+
+    // UI reset
+    els.resultCard.style.display = 'none';
+    stopLoading();
+    checkBtnState();
+  });
+
+  // === 核心分析功能 ===
+  els.btnAnalyze.addEventListener('click', async () => {
+    startLoading();
+    
+    try {
+      let data;
+
+      if (currentMode === 'image') {
+        // 圖片分析路徑
+        const base64Img = await toBase64(currentFile);
+        const response = await fetch(API_IMG_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image: base64Img })
+        });
+        if (!response.ok) throw new Error("後端分析錯誤");
+        data = await response.json();
+
+      } else {
+        // 文字分析路徑
+        const dishName = els.dishInput.value.trim();
+        const response = await fetch(API_TXT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dishName: dishName })
+        });
+        if (!response.ok) throw new Error("後端分析錯誤");
+        data = await response.json();
+      }
+
+      renderResult(data);
+
+    } catch (err) {
+      alert("發生錯誤：" + err.message);
+      console.error(err);
+    } finally {
+      stopLoading();
+    }
+  });
+
+  function renderResult(data) {
+    els.resultCard.style.display = 'block';
+    
+    els.name.textContent = data.dishName || "未知料理";
+    els.cal.textContent = data.calories || "--";
+    els.weight.textContent = data.estimatedWeight || "--";
+    
+    // 葷素標示
+    if (!data.isVegetarian) {
+        els.type.textContent = "⚠ 含葷食";
+        els.type.parentElement.style.color = '#ef4444';
+        els.type.parentElement.style.background = '#fef2f2';
+    } else {
+        els.type.textContent = "全素/蔬食";
+        els.type.parentElement.style = '';
+    }
+
+    // 食材
+    els.ingredients.innerHTML = data.ingredients.map(ing => `
+      <div class="ing-item">
+        <span>${ing.name}</span>
+        <span style="color: var(--primary-dark); font-weight: 600;">${ing.amount}</span>
+      </div>
+    `).join('');
+
+    // 步驟
+    els.steps.innerHTML = data.recipeSteps.map((step, idx) => `
+      <li class="step-item">
+        <div class="step-num">${idx + 1}</div>
+        <div class="step-desc">${step}</div>
+      </li>
+    `).join('');
+
+    els.resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  const toBase64 = file => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = error => reject(error);
+  });
+
+  function startLoading() {
+    els.loadingStatus.style.display = 'block';
+    els.btnAnalyze.disabled = true;
+    els.btnReset.disabled = true;
+    if(currentMode==='image') els.scanLine.style.display = 'block';
+  }
+
+  function stopLoading() {
+    els.loadingStatus.style.display = 'none';
+    els.btnAnalyze.disabled = false;
+    els.btnReset.disabled = false;
+    els.scanLine.style.display = 'none';
+  }
+</script>
+</body>
+</html>
