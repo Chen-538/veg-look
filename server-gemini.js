@@ -11,9 +11,18 @@ app.use(cors());
 
 const PORT = Number(process.env.PORT || 3000);
 const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL || "gemini-2.0-flash";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 
 const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function isRetryableError(err) {
+  const msg = (err && err.message) || "";
+  return /\b(503|429|500|502|504)\b/.test(msg) ||
+    /high demand|overload|temporar|unavailable|exhaust/i.test(msg);
+}
 
 const SYSTEM_PROMPT = `
 你是台灣料理與「無五辛蔬食」改作分析助手。
@@ -288,10 +297,9 @@ function extractJson(text) {
   return null;
 }
 
-async function callGemini(parts) {
-  ensureClient();
+async function callGeminiOnce(modelName, parts) {
   const model = genAI.getGenerativeModel({
-    model: MODEL,
+    model: modelName,
     systemInstruction: SYSTEM_PROMPT,
     generationConfig: {
       responseMimeType: "application/json",
@@ -310,6 +318,33 @@ async function callGemini(parts) {
     throw new Error(`Gemini returned invalid JSON: ${(text || "").slice(0, 200)}`);
   }
   return parsed;
+}
+
+async function callGemini(parts) {
+  ensureClient();
+
+  const candidates = [MODEL];
+  if (FALLBACK_MODEL && FALLBACK_MODEL !== MODEL) candidates.push(FALLBACK_MODEL);
+
+  let lastError;
+  for (const modelName of candidates) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        return await callGeminiOnce(modelName, parts);
+      } catch (err) {
+        lastError = err;
+        const retryable = isRetryableError(err);
+        console.warn(
+          `Gemini call failed (model=${modelName}, attempt=${attempt + 1}, retryable=${retryable}): ${err.message}`
+        );
+        if (!retryable) break;
+        await sleep(800 * Math.pow(2, attempt));
+      }
+    }
+    console.warn(`Switching from ${modelName} to fallback after exhausted retries.`);
+  }
+
+  throw lastError || new Error("Gemini call failed after all retries and fallbacks.");
 }
 
 async function analyzeMeal({ image, dishName }) {
