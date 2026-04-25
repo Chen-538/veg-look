@@ -204,4 +204,4 @@ app.post("/api/analyze-text-dual", async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => console.log(`Dual-AI Server running on port ${PORT}`));
 */
-import "./server-openai.js";
+import "./server-gemini.js";
